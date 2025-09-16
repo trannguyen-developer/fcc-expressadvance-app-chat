@@ -25,11 +25,9 @@ app.use(session({
   saveUninitialized: true,
   cookie: { secure: false }
 }));
-passport.initialize()
-passport.session()
-passport.authenticate('local');
-
-
+app.use(passport.initialize());
+app.use(passport.session());
+// passport.authenticate('local');
 
 myDB(async client => {
   const myDataBase = await client.db('database').collection('users');
@@ -43,6 +41,13 @@ myDB(async client => {
       return done(null, user);
     });
   }));
+
+  function ensureAuthenticated(req, res, next) {
+    if (req.isAuthenticated()) {
+      return next();
+    }
+    res.redirect('/');
+  };
   
   // Be sure to change the title
   app.route('/').get((req, res) => {
@@ -54,6 +59,15 @@ myDB(async client => {
     });
   });
 
+  app.post('/login', passport.authenticate('local', { failureRedirect: '/'}) ,
+  (req, res) => {
+    res.redirect('/profile')
+  })
+
+  app.get('/profile', ensureAuthenticated, (req, res) => {
+    res.render('profile')
+  })
+  
   // Serialization and deserialization here...
   passport.serializeUser((user, done) => {
     done(null, user._id)
@@ -65,14 +79,7 @@ myDB(async client => {
     });
   })
   
-  app.post('/login', passport.authenticate('local', { failureRedirect: '/'}) ,
-  (req, res) => {
-    res.redirect('/profile')
-  })
-
-  app.get('/profile', (req, res) => {
-    res.render('profile')
-  })
+  
   
   // Be sure to add this...
 }).catch(e => {
