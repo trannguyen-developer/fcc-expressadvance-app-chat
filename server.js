@@ -31,6 +31,13 @@ app.use(passport.initialize());
 app.use(passport.session());
 // passport.authenticate('local');
 
+function ensureAuthenticated(req, res, next) {
+  if (req.isAuthenticated()) {
+    return next();
+  }
+  res.redirect("/");
+}
+
 myDB(async (client) => {
   const myDataBase = await client.db("database").collection("users");
 
@@ -46,13 +53,6 @@ myDB(async (client) => {
     })
   );
 
-  function ensureAuthenticated(req, res, next) {
-    if (req.isAuthenticated()) {
-      return next();
-    }
-    res.redirect("/");
-  }
-
   // Be sure to change the title
   app.route("/").get((req, res) => {
     // Change the response to render the Pug template
@@ -60,6 +60,7 @@ myDB(async (client) => {
       title: "Connected to Database",
       message: "Please login",
       showLogin: true,
+      showRegistration: true,
     });
   });
 
@@ -72,7 +73,57 @@ myDB(async (client) => {
   );
 
   app.get("/profile", ensureAuthenticated, (req, res) => {
-    res.render("profile");
+    res.render("profile", {
+      username: req.user.username,
+    });
+  });
+
+
+  app.route("/register").post(
+    (req, res, next) => {
+      myDataBase.findOne({ username: req.body.username }, (err, user) => {
+        if (err) {
+          next(err);
+        } else if (user) {
+          res.redirect("/");
+        } else {
+          myDataBase.insertOne(
+            {
+              username: req.body.username,
+              password: req.body.password,
+            },
+            (err, doc) => {
+              if (err) {
+                res.redirect("/");
+              } else {
+                // The inserted document is held within
+                // the ops property of the doc
+                next(null, doc.ops[0]);
+              }
+            }
+          );
+        }
+      });
+    },
+    passport.authenticate("local", { failureRedirect: "/" }),
+    (req, res, next) => {
+      res.redirect("/profile");
+    }
+  );
+
+  app.route("/logout").get((req, res, next) => {
+    // req.logout(function (err) {
+    //   if (err) {
+    //     return next(err);
+    //   }
+    //   res.redirect("/");
+    // });
+    req.logout();
+    res.redirect("/");
+  });
+
+  app.use((req, res, next) => {
+    res.status(404).type("text").send("Not Found");
   });
 
   // Serialization and deserialization here...
