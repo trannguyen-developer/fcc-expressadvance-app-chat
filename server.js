@@ -33,11 +33,8 @@ app.use(passport.session());
 
 myDB(async (client) => {
   const myDataBase = await client.db("database").collection("users");
-
   routes(app, myDataBase);
   auth(app, myDataBase);
-
-  // Be sure to add this...
 }).catch((e) => {
   app.route("/").get((req, res) => {
     res.render("index", { title: e, message: "Unable to connect to database" });
