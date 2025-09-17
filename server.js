@@ -88,6 +88,11 @@ io.on("connection", (socket) => {
 
   socket.on("disconnect", () => {
     --currentUsers;
+    io.emit("user", {
+      username: socket.request.user.username,
+      currentUsers,
+      connected: false,
+    });
   });
 
   socket.on("chat message", (message) => {
